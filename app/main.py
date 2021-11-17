@@ -1,9 +1,11 @@
 from dataclasses import asdict
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi_jwt_auth.exceptions import AuthJWTException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 
 from app.common.config import conf
 from app.database.conn import db
@@ -40,6 +42,12 @@ def create_app():
     # Router
     app.include_router(index.router)
     app.include_router(auth.router, tags=["Authentication"], prefix="/api")
+
+    # Exception
+
+    @app.exception_handler(AuthJWTException)
+    def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+        return JSONResponse(status_code=exc.status_code, content=dict(detail=exc.message))
 
     return app
 
