@@ -70,5 +70,5 @@ class SQLAlchemy:
         return self._engine
 
 
-db = SQLAlchemy()  # Singletone
+db = SQLAlchemy()  # Singleton
 Base = declarative_base()

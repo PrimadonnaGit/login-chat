@@ -2,9 +2,11 @@ import os
 from typing import List
 
 import pytest
-from app.routes.auth import create_access_token
+from fastapi import Depends
 from fastapi.testclient import TestClient
+from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
 
 from app.database.conn import db, Base
 from app.database.schema import Users
@@ -45,16 +47,21 @@ def session():
 
 
 @pytest.fixture(scope="function")
-def login(session):
+def login(session, authorize: AuthJWT = Depends()):
     """
     테스트전 사용자 미리 등록
     :param session:
     :return:
     """
-    db_user = Users.create(session=session, email="ryan_test@dingrr.com", pw="123")
+    db_user = Users.create(session=session, email="test@test.com", password="test")
     session.commit()
-    access_token = create_access_token(data=UserToken.from_orm(db_user).dict(exclude={'pw', 'marketing_agree'}), )
-    return dict(Authorization=f"Bearer {access_token}")
+    access_token = authorize.create_access_token(subject=UserToken.from_orm(db_user).email)
+    refresh_token = authorize.create_refresh_token(subject=UserToken.from_orm(db_user).email)
+    response = JSONResponse(status_code=200,
+                            content=dict(access_token=access_token, refresh_token=refresh_token, msg="OK"))
+    authorize.set_access_cookies(access_token, response)
+    authorize.set_refresh_cookies(refresh_token, response)
+    return response
 
 
 def clear_all_table_data(session: Session, metadata, except_tables: List[str] = None):

@@ -1,13 +1,12 @@
 import bcrypt
 from fastapi import APIRouter, Depends
 from fastapi_jwt_auth import AuthJWT
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from app.database.conn import db
 from app.database.schema import Users
-from app.models import SnsType, Token, UserToken, UserRegister
+from app.models import SnsType, Token, UserMe, UserToken, UserRegister
 
 """
 1. 구글 로그인을 위한 구글 앱 준비 (구글 개발자 도구)
@@ -36,36 +35,6 @@ from app.models import SnsType, Token, UserToken, UserRegister
 router = APIRouter(prefix="/auth")
 
 
-class Settings(BaseModel):
-    authjwt_secret_key: str = "secret"
-    # Configure application to store and get JWT from cookies
-    authjwt_token_location: set = {"cookies"}
-    # Only allow JWT cookies to be sent over https
-    authjwt_cookie_secure: bool = False
-    # Enable csrf double submit protection. default is True
-    authjwt_cookie_csrf_protect: bool = False
-    # Change to 'lax' in production to make your website more secure from CSRF Attacks, default is None
-    # authjwt_cookie_samesite: str = 'lax'
-
-
-@AuthJWT.load_config
-def get_config():
-    return Settings()
-
-
-@router.get("/user", status_code=200)
-async def get_user(authorize: AuthJWT = Depends()):
-    authorize.jwt_optional()
-    current_user = authorize.get_jwt_subject() or None
-
-    if not current_user:
-        return JSONResponse(status_code=200)
-    user = Users.get(email=current_user)
-    if user:
-        return user
-    return JSONResponse(status_code=400, content=dict(msg="NO_MATCH_USER"))
-
-
 @router.post("/login/{sns_type}", status_code=200, response_model=Token)
 async def login(sns_type: SnsType, user_info: UserRegister, authorize: AuthJWT = Depends()):
     """
@@ -87,7 +56,8 @@ async def login(sns_type: SnsType, user_info: UserRegister, authorize: AuthJWT =
         access_token = authorize.create_access_token(subject=user_info.email)
         refresh_token = authorize.create_refresh_token(subject=user_info.email)
         # Set the JWT and CSRF double submit cookies in the response
-        response = JSONResponse(status_code=200, content=dict(msg="OK"))
+        response = JSONResponse(status_code=200,
+                                content=dict(access_token=access_token, refresh_token=refresh_token, msg="OK"))
         authorize.set_access_cookies(access_token, response)
         authorize.set_refresh_cookies(refresh_token, response)
         return response
@@ -140,8 +110,8 @@ async def register(sns_type: SnsType, reg_info: UserRegister, session: Session =
         new_user = Users.create(session, auto_commit=True, password=hash_password, email=reg_info.email)
         access_token = authorize.create_access_token(subject=UserToken.from_orm(new_user).email)
         refresh_token = authorize.create_refresh_token(subject=UserToken.from_orm(new_user).email)
-
-        response = JSONResponse(status_code=200, content=dict(msg="OK"))
+        response = JSONResponse(status_code=201,
+                                content=dict(access_token=access_token, refresh_token=refresh_token, msg="OK"))
         authorize.set_access_cookies(access_token, response)
         authorize.set_refresh_cookies(refresh_token, response)
         return response

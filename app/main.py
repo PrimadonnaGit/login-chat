@@ -1,17 +1,19 @@
 from dataclasses import asdict
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
+from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
+from fastapi.security import APIKeyHeader, APIKeyCookie
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
-from app.common.config import conf
+from app.common.config import JWTConfig, conf
 from app.database.conn import db
 from app.middlewares.trusted_hosts import TrustedHostMiddleware
-from app.routes import index, auth
-from middlewares.token_validator import access_control
+from app.routes import index, auth, users
+from app.middlewares.token_validator import access_control
 
 
 def create_app():
@@ -26,10 +28,20 @@ def create_app():
     app = FastAPI()
     # DB
     db.init_app(app, **conf_dict)
+
     # Redis
 
+    # AuthJWT
+    @AuthJWT.load_config
+    def get_config():
+        return JWTConfig()
+
+    @app.exception_handler(AuthJWTException)
+    def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+        return JSONResponse(status_code=exc.status_code, content=dict(detail=exc.message))
+
     # Middleware
-    app.add_middleware(middleware_class=BaseHTTPMiddleware, dispatch=access_control)
+    # app.add_middleware(middleware_class=BaseHTTPMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=conf().ALLOW_SITE,
@@ -42,12 +54,7 @@ def create_app():
     # Router
     app.include_router(index.router)
     app.include_router(auth.router, tags=["Authentication"], prefix="/api")
-
-    # Exception
-
-    @app.exception_handler(AuthJWTException)
-    def authjwt_exception_handler(request: Request, exc: AuthJWTException):
-        return JSONResponse(status_code=exc.status_code, content=dict(detail=exc.message))
+    app.include_router(users.router, tags=["Users"], prefix="/api")
 
     return app
 

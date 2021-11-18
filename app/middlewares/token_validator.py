@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from app.common import config, consts
 from app.common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
 from app.database.conn import db
-from app.database.schema import Users, ApiKeys
+from app.database.schema import Users
 from app.errors import exceptions as ex
 from app.errors.exceptions import APIException, SqlFailureEx
 from app.models import UserToken
@@ -110,8 +110,8 @@ async def access_control(request: Request, call_next):
                         raise ex.NotAuthorized()
         else:
             # 템플릿 렌더링인 경우 쿠키에서 토큰 검사
-            cookies[
-                "Authorization"] = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MTQsImVtYWlsIjoia29hbGFAZGluZ3JyLmNvbSIsIm5hbWUiOm51bGwsInBob25lX251bWJlciI6bnVsbCwicHJvZmlsZV9pbWciOm51bGwsInNuc190eXBlIjpudWxsfQ.4vgrFvxgH8odoXMvV70BBqyqXOFa2NDQtzYkGywhV48"
+            # cookies[
+            #     "Authorization"] = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MTQsImVtYWlsIjoia29hbGFAZGluZ3JyLmNvbSIsIm5hbWUiOm51bGwsInBob25lX251bWJlciI6bnVsbCwicHJvZmlsZV9pbWciOm51bGwsInNuc190eXBlIjpudWxsfQ.4vgrFvxgH8odoXMvV70BBqyqXOFa2NDQtzYkGywhV48"
 
             if "Authorization" not in cookies.keys():
                 raise ex.NotAuthorized()

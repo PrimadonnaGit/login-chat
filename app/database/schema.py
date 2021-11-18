@@ -53,7 +53,6 @@ class BaseMixin:
         for key, val in kwargs.items():
             col = getattr(cls, key)
             query = query.filter(col == val)
-
         if query.count() > 1:
             raise Exception("Only one row is supposed to be returned, but got more than one.")
         result = query.first()
@@ -169,22 +168,3 @@ class Users(Base, BaseMixin):
     profile_img = Column(String(length=1000), nullable=True)
     sns_type = Column(Enum("FB", "G", "K"), nullable=True)
     marketing_agree = Column(Boolean, nullable=True, default=True)
-    keys = relationship("ApiKeys", back_populates="users")
-
-
-class ApiKeys(Base, BaseMixin):
-    __tablename__ = "api_keys"
-    access_key = Column(String(length=64), nullable=False, index=True)
-    secret_key = Column(String(length=64), nullable=False)
-    user_memo = Column(String(length=40), nullable=True)
-    status = Column(Enum("active", "stopped", "deleted"), default="active")
-    is_whitelisted = Column(Boolean, default=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    whitelist = relationship("ApiWhiteLists", backref="api_keys")
-    users = relationship("Users", back_populates="keys")
-
-
-class ApiWhiteLists(Base, BaseMixin):
-    __tablename__ = "api_whitelists"
-    ip_addr = Column(String(length=64), nullable=False)
-    api_key_id = Column(Integer, ForeignKey("api_keys.id"), nullable=False)
